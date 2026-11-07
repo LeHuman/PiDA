@@ -76,7 +76,7 @@ systemctl status pi-api
 journalctl -u pi-api -f
 ```
 
-The service binds to port `9999`, configurable via `~/.pida/env`.
+The service binds to port `9999`, configurable via the `service:` section in `~/.pida/pida.yaml`.
 
 ```sh
 curl http://<pi>:9999/api/health
@@ -101,6 +101,7 @@ demo:
 ```
 
 - `pida.yaml` is personal data and is not stored in the repository.
+- The `service:` section sets the bind port, address, workers, and threads.
 - `icons/` mirrors action endpoints for UI icons.
 - `library/` contains device-specific helper scripts.
 - Environment variables can be inherited by groups and overridden per action.

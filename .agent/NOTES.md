@@ -47,7 +47,8 @@ parameter's declared type.
 
 ## API and Runtime
 
-- Gunicorn runs under systemd on port `9999` (configurable via `~/.pida/env`), with one worker and three
+- Gunicorn runs under systemd on port `9999` (configurable via the
+  `service:` section of `~/.pida/pida.yaml`), with one worker and five
   threads. The local service is configured for a trusted LAN; it has no
   authentication layer.
 - `GET /api/health` reports service health.
