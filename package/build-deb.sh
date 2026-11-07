@@ -20,7 +20,7 @@ mkdir -p "$STAGE/DEBIAN" \
 
 install -m 644 src/pipeline.py src/server.py src/pida.schema.json "$STAGE/opt/pida/src/"
 install -m 644 pyproject.toml README.md "$STAGE/opt/pida/"
-install -m 644 scripts/cli.py "$STAGE/opt/pida/scripts/cli.py"
+install -m 755 scripts/cli.py scripts/serve.py "$STAGE/opt/pida/scripts/"
 install -m 644 package/pi-api.service "$STAGE/lib/systemd/system/pi-api.service"
 install -m 644 package/README.icons package/README.library "$STAGE/usr/share/pida/"
 install -m 644 package/control "$STAGE/DEBIAN/control"

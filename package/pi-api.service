@@ -8,11 +8,11 @@ Type=simple
 User=pi
 WorkingDirectory=/opt/pida
 Environment=PYTHONPATH=/opt/pida/src
-# Service config (port, bind, workers, threads) is user-owned:
-# /home/pi/.pida/env. Edit it, then systemctl restart pi-api.
+# Service settings (port, bind, workers, threads) live in the `service:`
+# section of /home/pi/.pida/pida.yaml; scripts/serve.py reads them and
+# execs gunicorn. Edit pida.yaml, then: systemctl restart pi-api.
 # (postinst rewrites /home/pi to the resolved home for non-pi installs.)
-EnvironmentFile=/home/pi/.pida/env
-ExecStart=/home/pi/.pida/.venv/bin/gunicorn -w ${PIDA_WORKERS} --threads ${PIDA_THREADS} -b ${PIDA_BIND}:${PIDA_PORT} server:app
+ExecStart=/home/pi/.pida/.venv/bin/python /opt/pida/scripts/serve.py
 Restart=on-failure
 RestartSec=3
 
