@@ -27,8 +27,25 @@ sed -i "s/^Version: .*/Version: $VER/" "$STAGE/DEBIAN/control"
 install -m 755 package/postinst package/prerm package/postrm "$STAGE/DEBIAN/"
 
 echo "== vendoring wheels (offline install payload) =="
-python3 -m pip wheel . --wheel-dir "$STAGE/opt/pida/wheels" \
-    --only-binary=:all: -q
+if [ -n "${PIDA_WHEEL_PLATFORMS:-}" ]; then
+    # Cross-vendor from CI (x86_64) for the arm64 target host: build the
+    # project wheel (pure Python), then fetch dependency wheels for the
+    # target platform. pip needs exact platform tags, so pass every
+    # manylinux glibc tag up to the target's (Raspberry Pi OS: 2.36).
+    python3 -m pip wheel . --no-deps --wheel-dir "$STAGE/opt/pida/wheels" -q
+    platforms=""
+    for p in $PIDA_WHEEL_PLATFORMS; do platforms="$platforms --platform $p"; done
+    # shellcheck disable=SC2086
+    python3 -m pip download . --dest "$STAGE/opt/pida/wheels" \
+        $platforms \
+        --python-version "${PIDA_WHEEL_PY:-3.11}" \
+        --implementation cp \
+        --abi "${PIDA_WHEEL_ABI:-cp311}" \
+        --only-binary=:all: --no-cache-dir -q
+else
+    python3 -m pip wheel . --wheel-dir "$STAGE/opt/pida/wheels" \
+        --only-binary=:all: -q
+fi
 
 echo "== building =="
 dpkg-deb --root-owner-group --build "$STAGE" "$OUT"
