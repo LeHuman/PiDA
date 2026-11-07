@@ -51,3 +51,22 @@ jobs:
           name: pida-deb
           path: pida_${{ steps.version.outputs.version }}_all.deb
           if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    if: github.ref_type == 'tag'
+    needs: deb
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pida-deb
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: pida_*.deb
+          generate_release_notes: true
