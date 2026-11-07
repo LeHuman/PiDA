@@ -21,22 +21,27 @@ fi
 GROUP_NAME=$(id -gn "$USER_NAME")
 DATA="$HOME_DIR/.pida"
 
-# --- service config (user-owned) --------------------------------------------
-# The unit binds/threads come from ~/.pida/env: edit it, then restart.
-# Never overwrite: the values are the user's.
-ENV_FILE="$DATA/env"
-if [ ! -e "$ENV_FILE" ]; then
-    cat > "$ENV_FILE" <<'ENVDATA'
-# Pi Action API service config (read by pi-api.service).
-# Edit, then: systemctl restart pi-api
-PIDA_PORT=9999
-PIDA_BIND=0.0.0.0
-PIDA_WORKERS=1
-PIDA_THREADS=5
-ENVDATA
-    chown "$USER_NAME:$GROUP_NAME" "$ENV_FILE"
-    echo "pida: seeded $ENV_FILE (service config: port, bind, workers, threads)"
-fi
+# --- service settings (in pida.yaml `service:`; never overwritten) ---------
+# Bind/runtime settings live in the `service:` section of pida.yaml; the
+# old env file is migrated on first upgrade, then removed. Defaults match
+# SERVICE_DEFAULTS in src/pipeline.py.
+seed_service() {
+    port=9999 bind=0.0.0.0 workers=1 threads=5
+    if [ -f "$DATA/env" ]; then
+        # shellcheck disable=SC1090
+        . "$DATA/env" || true
+        port=${PIDA_PORT:-$port} bind=${PIDA_BIND:-$bind}
+        workers=${PIDA_WORKERS:-$workers} threads=${PIDA_THREADS:-$threads}
+    fi
+    {
+        echo "service:"
+        echo "  port: $port"
+        echo "  bind: $bind"
+        echo "  workers: $workers"
+        echo "  threads: $threads"
+    } >> "$1"
+    echo "pida: seeded service settings into $1"
+}
 
 # --- seed per-install data (never overwrite) --------------------------------
 install -d -m 755 "$DATA/logs" "$DATA/icons" "$DATA/library"
@@ -45,12 +50,17 @@ if [ ! -e "$DATA/pida.yaml" ]; then
     if [ -e "$DATA/commands.yaml" ]; then
         mv "$DATA/commands.yaml" "$DATA/pida.yaml"
         echo "pida: migrated commands.yaml -> pida.yaml"
-    else
-        printf '{}\n' > "$DATA/pida.yaml"
-        chmod 644 "$DATA/pida.yaml"
-        echo "pida: seeded empty $DATA/pida.yaml; add action groups to configure devices"
     fi
 fi
+if [ ! -e "$DATA/pida.yaml" ]; then
+    : > "$DATA/pida.yaml"
+    seed_service "$DATA/pida.yaml"
+    echo "pida: seeded $DATA/pida.yaml (service defaults; add action groups to configure devices)"
+elif ! grep -qE '^[[:space:]]*service:' "$DATA/pida.yaml"; then
+    seed_service "$DATA/pida.yaml"
+    echo "pida: migrated service settings into $DATA/pida.yaml (service: section)"
+fi
+rm -f "$DATA/env"
 chown "$USER_NAME:$GROUP_NAME" "$DATA/pida.yaml"
 if [ ! -e "$DATA/requirements.txt" ]; then
     if [ -e "$DATA/requirements.local.txt" ]; then
@@ -128,9 +138,10 @@ systemctl enable pi-api.service
 systemctl restart pi-api.service
 
 # --- health check (informational) ---------------------------------------------
-# The configured port is the user's (from ~/.pida/env); default 9999.
-PIDA_PORT=9999
-[ -f "$DATA/env" ] && . "$DATA/env"
+# The configured port is the user's (service: section of pida.yaml).
+PIDA_PORT=$(HOME="$HOME_DIR" PIDA_SRC="$PROJECT/src" "$VENV/bin/python" -c \
+    'import os, sys; sys.path.insert(0, os.environ["PIDA_SRC"]); import pipeline; print(pipeline.service_settings()["port"])' \
+    2>/dev/null) || PIDA_PORT=9999
 sleep 2
 OK=no
 for _ in 1 2 3 4 5 6; do
