@@ -27,7 +27,11 @@ jobs:
         run: |
           if [ "${{ github.ref_type }}" = "tag" ]; then
             # Tags look like x.x.x, with or without a leading v.
-            echo "version=${{ github.ref_name }}" | sed 's/^v//' >> "$GITHUB_OUTPUT"
+            # Strip the v from the TAG NAME ONLY (${ver#v}), never the
+            # whole output line: sed 's/^v//' would eat the "v" of
+            # "version=" and yield an empty output.
+            ver="${{ github.ref_name }}"
+            echo "version=${ver#v}" >> "$GITHUB_OUTPUT"
           else
             echo "version=0.0.0+sha.${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
           fi
