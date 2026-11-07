@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pi-action-api"
+version = "1.0.0"
+description = "YAML-configured action API for local device automation"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+	"Flask==3.1.3",
+	"gunicorn==26.2.0",
+	"PyYAML==6.0.3",
+	"jsonschema==4.25.1",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+py-modules = ["pipeline", "server"]
+
+[tool.setuptools.data-files]
+"share/pi-action-api" = ["src/pida.schema.json"]

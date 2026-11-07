@@ -1,0 +1,265 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Pi Action API pipeline configuration",
+    "description": "Validates the structure of the per-install pida.yaml file.",
+    "$ref": "#/$defs/groupMap",
+    "$defs": {
+        "envMap": {
+            "type": "object",
+            "additionalProperties": {
+                "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                ]
+            }
+        },
+        "param": {
+            "type": "object",
+            "required": [
+                "type"
+            ],
+            "properties": {
+                "type": {
+                    "enum": [
+                        "bool",
+                        "int",
+                        "float",
+                        "enum",
+                        "string"
+                    ]
+                },
+                "min": {
+                    "type": "number"
+                },
+                "max": {
+                    "type": "number"
+                },
+                "enum": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                        "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null"
+                        ]
+                    }
+                },
+                "required": {
+                    "type": "boolean"
+                }
+            },
+            "additionalProperties": false,
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "type": {
+                                "enum": [
+                                    "int",
+                                    "float"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "type"
+                        ]
+                    },
+                    "else": {
+                        "not": {
+                            "anyOf": [
+                                {
+                                    "required": [
+                                        "min"
+                                    ]
+                                },
+                                {
+                                    "required": [
+                                        "max"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "type": {
+                                "const": "enum"
+                            }
+                        },
+                        "required": [
+                            "type"
+                        ]
+                    },
+                    "then": {
+                        "required": [
+                            "enum"
+                        ]
+                    },
+                    "else": {
+                        "not": {
+                            "required": [
+                                "enum"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        "action": {
+            "type": "object",
+            "required": [
+                "action"
+            ],
+            "anyOf": [
+                {
+                    "required": [
+                        "run"
+                    ]
+                },
+                {
+                    "required": [
+                        "needs"
+                    ]
+                }
+            ],
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "description": {
+                    "type": "string"
+                },
+                "run": {
+                    "type": "string"
+                },
+                "needs": {
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    ]
+                },
+                "env": {
+                    "$ref": "#/$defs/envMap"
+                },
+                "allow-failure": {
+                    "type": "boolean"
+                },
+                "allow_failure": {
+                    "type": "boolean"
+                },
+                "timeout": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                },
+                "params": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/$defs/param"
+                    }
+                },
+                "inputs": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "outputs": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "envItem": {
+            "type": "object",
+            "required": [
+                "env"
+            ],
+            "properties": {
+                "env": {
+                    "$ref": "#/$defs/envMap"
+                }
+            },
+            "additionalProperties": false
+        },
+        "subgroupItem": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 1,
+            "propertyNames": {
+                "type": "string",
+                "not": {
+                    "enum": [
+                        "description",
+                        "env"
+                    ]
+                }
+            },
+            "additionalProperties": {
+                "$ref": "#/$defs/node"
+            }
+        },
+        "listItem": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/action"
+                },
+                {
+                    "$ref": "#/$defs/envItem"
+                },
+                {
+                    "$ref": "#/$defs/subgroupItem"
+                }
+            ]
+        },
+        "groupMap": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "env": {
+                    "$ref": "#/$defs/envMap"
+                }
+            },
+            "patternProperties": {
+                "^(?!description$|env$).+$": {
+                    "$ref": "#/$defs/node"
+                }
+            },
+            "additionalProperties": false
+        },
+        "node": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/groupMap"
+                },
+                {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/listItem"
+                    }
+                }
+            ]
+        }
+    }
+}
