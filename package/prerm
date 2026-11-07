@@ -1,0 +1,7 @@
+#!/bin/bash
+# pida prerm: stop the service on remove; keep user data untouched.
+set -e
+if [ "$1" = remove ] || [ "$1" = purge ]; then
+    systemctl stop pi-api.service 2>/dev/null || true
+    systemctl disable pi-api.service 2>/dev/null || true
+fi

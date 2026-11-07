@@ -1,0 +1,16 @@
+Package: pida
+Version: 1.0.0
+Section: net
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.9), python3-venv, curl
+Suggests: systemd-sysv
+Maintainer: PiDA <local@invalid>
+Description: Pi Action API — schema-driven device dispatch server
+ A Flask/gunicorn service that turns a declarative YAML file into an
+ HTTP device API: every action becomes POST /api/<group>/<action>,
+ parameterized actions expose a typed schema (/api/schema) consumed by
+ the PiDA Android companion (tiles + home-screen widgets). Run strings
+ are plain bash; per-install device data (pida.yaml, icons/,
+ library/) lives in the user's home and is never managed by this
+ package. Installed as the pi-api.service systemd unit.

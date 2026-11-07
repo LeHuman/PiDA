@@ -1,0 +1,11 @@
+# library/
+
+Your device-driver scripts, referenced from pida.yaml run strings
+as ./library/<name>/<script>.py. At every server start each .py here
+gets its shebang rewritten to the service venv's python and the exec
+bit set, so:
+
+    ./library/mydevice/mydevice.py --host "$MY_IP" power
+
+runs under the venv interpreter and its imports resolve against the venv
+automatically.

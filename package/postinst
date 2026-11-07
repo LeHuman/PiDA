@@ -1,0 +1,144 @@
+#!/bin/bash
+# pida postinst: seed per-install data, build the offline venv, install the
+# service. Idempotent — re-running never overwrites user data.
+set -e
+
+PROJECT=/opt/pida
+
+# --- target user -----------------------------------------------------------
+# Defaults to pi. For another user: sudo env PIDA_USER=jane apt install ./pida_x.deb
+USER_NAME=${PIDA_USER:-pi}
+if ! id -u "$USER_NAME" >/dev/null 2>&1; then
+    echo "pida: user '$USER_NAME' does not exist (set PIDA_USER or create it)." >&2
+    exit 1
+fi
+HOME_DIR=$(getent passwd "$USER_NAME" | cut -d: -f6)
+if [ ! -d "$HOME_DIR" ]; then
+    echo "pida: home '$HOME_DIR' does not exist (create it: useradd -m)." >&2
+    exit 1
+fi
+# Do not assume the primary group matches the username (useradd -N, LDAP...).
+GROUP_NAME=$(id -gn "$USER_NAME")
+DATA="$HOME_DIR/.pida"
+
+# --- service config (user-owned) --------------------------------------------
+# The unit binds/threads come from ~/.pida/env: edit it, then restart.
+# Never overwrite: the values are the user's.
+ENV_FILE="$DATA/env"
+if [ ! -e "$ENV_FILE" ]; then
+    cat > "$ENV_FILE" <<'ENVDATA'
+# Pi Action API service config (read by pi-api.service).
+# Edit, then: systemctl restart pi-api
+PIDA_PORT=9999
+PIDA_BIND=0.0.0.0
+PIDA_WORKERS=1
+PIDA_THREADS=5
+ENVDATA
+    chown "$USER_NAME:$GROUP_NAME" "$ENV_FILE"
+    echo "pida: seeded $ENV_FILE (service config: port, bind, workers, threads)"
+fi
+
+# --- seed per-install data (never overwrite) --------------------------------
+install -d -m 755 "$DATA/logs" "$DATA/icons" "$DATA/library"
+install -d -o "$USER_NAME" -g "$GROUP_NAME" "$DATA/logs" "$DATA/icons" "$DATA/library"
+if [ ! -e "$DATA/pida.yaml" ]; then
+    if [ -e "$DATA/commands.yaml" ]; then
+        mv "$DATA/commands.yaml" "$DATA/pida.yaml"
+        echo "pida: migrated commands.yaml -> pida.yaml"
+    else
+        printf '{}\n' > "$DATA/pida.yaml"
+        chmod 644 "$DATA/pida.yaml"
+        echo "pida: seeded empty $DATA/pida.yaml; add action groups to configure devices"
+    fi
+fi
+chown "$USER_NAME:$GROUP_NAME" "$DATA/pida.yaml"
+if [ ! -e "$DATA/requirements.txt" ]; then
+    if [ -e "$DATA/requirements.local.txt" ]; then
+        mv "$DATA/requirements.local.txt" "$DATA/requirements.txt"
+        echo "pida: migrated requirements.local.txt -> requirements.txt"
+    else
+        : > "$DATA/requirements.txt"
+        echo "pida: seeded empty additive $DATA/requirements.txt (personal deps: one per line)"
+    fi
+fi
+chown "$USER_NAME:$GROUP_NAME" "$DATA/requirements.txt"
+if [ ! -e "$DATA/icons/README.md" ]; then
+    cp /usr/share/pida/README.icons "$DATA/icons/README.md"
+    chown "$USER_NAME:$GROUP_NAME" "$DATA/icons/README.md"
+fi
+if [ ! -e "$DATA/library/README.md" ]; then
+    cp /usr/share/pida/README.library "$DATA/library/README.md"
+    chown "$USER_NAME:$GROUP_NAME" "$DATA/library/README.md"
+fi
+
+# --- user-side venv, bootstrapped offline from vendored wheels --------------
+# The venv lives WITH the user data so sync_deps() (running as the service
+# user) can add new deps at runtime. /opt/pida stays root-owned immutable
+# program code; wheels remain there for the offline bootstrap.
+VENV="$DATA/.venv"
+if [ ! -x "$VENV/bin/pip" ]; then
+    echo "pida: creating user venv at $VENV"
+    python3 -m venv "$VENV"
+fi
+HASH_FILE="$VENV/.requirements-hash"
+# Combined hash: pyproject + local (must match sync_deps' concatenation
+# order, or the two layers ping-pong reinstall each other forever).
+DIGEST=$( { cat "$PROJECT/pyproject.toml"; cat "$DATA/requirements.txt"; } | sha256sum | cut -d" " -f1)
+# Install when the venv lacks its key entrypoint OR the combined hash changed.
+# Never trust a hash alone: a fresh venv + a hash written by ANOTHER venv
+# (the hash file lives inside the venv, so it is per-venv by construction) must still install.
+if [ ! -x "$VENV/bin/gunicorn" ] || [ ! -f "$HASH_FILE" ] || [ "$(cat "$HASH_FILE" | tr -d "[:space:]")" != "$DIGEST" ]; then
+    echo "pida: installing python deps from vendored wheels (offline)"
+    if "$VENV/bin/pip" install --no-index --find-links /opt/pida/wheels \
+            pi-action-api -r "$DATA/requirements.txt"; then
+        echo "$DIGEST" > "$HASH_FILE"
+    else
+        # Personal extras not in wheels: bootstrap the BASE offline now;
+        # write the base-only hash so sync_deps retries BOTH at next boot
+        # (online) instead of believing the extras are installed.
+        echo "pida: personal extras not vendored; base-only offline; extras install at next service start"
+        "$VENV/bin/pip" install --no-index --find-links /opt/pida/wheels pi-action-api
+        sha256sum "$PROJECT/pyproject.toml" | cut -d" " -f1 > "$HASH_FILE"
+    fi
+fi
+
+# --- ownership ----------------------------------------------------------------
+chown -R "$USER_NAME:$GROUP_NAME" "$DATA"
+chown -R root:root /opt/pida
+
+# --- service ------------------------------------------------------------------
+# Containers/chroots may have no running systemd; the package must still
+# install cleanly there (dpkg would otherwise be left in a failed state).
+if [ ! -d /run/systemd/system ]; then
+    echo "pida: systemd not running; unit staged at /lib/systemd/system/pi-api.service"
+    echo "pida:   start manually after systemd is up (systemctl daemon-reload; systemctl enable --now pi-api)"
+    exit 0
+fi
+# A hand-installed /etc override would shadow the packaged unit; archive it.
+if [ -f /etc/systemd/system/pi-api.service ]; then
+    mv /etc/systemd/system/pi-api.service "/etc/systemd/system/pi-api.service.pre-pida-$(date +%Y%m%d%H%M%S)"
+    echo "pida: archived pre-existing /etc systemd override"
+fi
+# The packaged unit ships with pi defaults; adapt it to the resolved user.
+# (No-op when USER_NAME=pi: the replacement writes the same values.)
+sed -i -e "s|^User=.*|User=$USER_NAME|" -e "s|/home/pi|$HOME_DIR|g" \
+    /lib/systemd/system/pi-api.service
+systemctl daemon-reload
+systemctl enable pi-api.service
+systemctl restart pi-api.service
+
+# --- health check (informational) ---------------------------------------------
+# The configured port is the user's (from ~/.pida/env); default 9999.
+PIDA_PORT=9999
+[ -f "$DATA/env" ] && . "$DATA/env"
+sleep 2
+OK=no
+for _ in 1 2 3 4 5 6; do
+    if curl -fsS -m 3 "http://localhost:$PIDA_PORT/api/health" >/dev/null 2>&1; then OK=yes; break; fi
+    sleep 2
+done
+if [ "$OK" = yes ]; then
+    echo "pida: service healthy on :$PIDA_PORT"
+else
+    echo "pida: WARNING - service not healthy yet; check: journalctl -u pi-api -n 50" >&2
+fi
