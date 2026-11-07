@@ -21,7 +21,7 @@ PiDA is a lightweight home-automation server for a Raspberry Pi. It turns a YAML
 
 ### Why
 <!-- WHY START -->
-Most home automation setups either hardcode device logic into code or require a full platform and database stack. PiDA keeps things intentionally small and local: define an action in YAML and map it to a shell command or helper script. Device mapping and runtime commands stay in a per-install directory under `~/.pida`, keeping the packaged program generic and upgrade-friendly.
+I wanted a simple and lightweight solution to various 'automation' actions around my place. I didn't want a full platform stack or layers of UI interfaces. I wanted a pipeline like interface that was basically a passthrough for whatever script I ran. I already functionally had something like this but it was directly on my phone through termux.
 <!-- WHY END -->
 
 ## Key Features
@@ -119,7 +119,3 @@ Keep the server on a trusted private network or behind authentication. Do not ex
 ## License
 
 This project is distributed under the MIT license.
-
-## Contribution
-
-Contributions are welcome. Keep changes focused, and do not include private server addresses, credentials, or device-specific details.
