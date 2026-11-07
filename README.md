@@ -92,7 +92,7 @@ curl -X POST http://<pi>:9999/api/group/action
 
 ### Configuration
 
-The main config file is `~/.pida/pida.yaml`. Fresh installs seed an empty mapping; the formal JSON Schema is `src/pida.schema.json`.
+The main config file is `~/.pida/pida.yaml`. Fresh installs generate a quick-reference header and default `service:` settings; add your own groups below it. The formal JSON Schema is `src/pida.schema.json`.
 
 ```yaml
 demo:
