@@ -14,7 +14,7 @@ dist/
 .DS_Store
 
 # Personal per-install data: never pushed
-/commands.yaml
+/pida.yaml
 /icons/
 /library/
 /pida_*.deb
