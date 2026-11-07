@@ -1,0 +1,10 @@
+# icons/
+
+Per-action PNGs, mirroring the endpoint path. The Android companion
+fetches them for tiles and home-screen widgets:
+
+    group/sub/action.png       <->  POST /api/group/sub/action
+
+Served at /api/icon/<path>; missing icons are normal (the app walks a
+fallback ladder). Any transparent-background PNG works; keep them
+square-ish, ~200px.
