@@ -1,0 +1,53 @@
+name: Build Debian package
+
+on:
+  push:
+    branches: [main]
+    tags: ['*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deb:
+    name: Debian package (arm64 install payload)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            # Tags look like x.x.x, with or without a leading v.
+            echo "version=${{ github.ref_name }}" | sed 's/^v//' >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0+sha.${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build deb
+        env:
+          # The runner is x86_64, the package installs on arm64 hosts
+          # (Raspberry Pi OS bookworm: glibc 2.36, Python 3.11).
+          PIDA_WHEEL_PLATFORMS: >-
+            manylinux2014_aarch64
+            manylinux_2_17_aarch64
+            manylinux_2_28_aarch64
+            manylinux_2_31_aarch64
+            manylinux_2_34_aarch64
+            manylinux_2_36_aarch64
+        run: ./package/build-deb.sh "${{ steps.version.outputs.version }}"
+
+      - name: Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: pida-deb
+          path: pida_${{ steps.version.outputs.version }}_all.deb
+          if-no-files-found: error
