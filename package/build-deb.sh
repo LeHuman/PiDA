@@ -15,6 +15,7 @@ mkdir -p "$STAGE/DEBIAN" \
          "$STAGE/opt/pida/wheels" \
          "$STAGE/opt/pida/src" \
          "$STAGE/opt/pida/scripts" \
+         "$STAGE/usr/share/pida" \
          "$STAGE/lib/systemd/system"
 
 install -m 644 src/pipeline.py src/server.py src/pida.schema.json "$STAGE/opt/pida/src/"
