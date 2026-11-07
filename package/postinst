@@ -33,6 +33,26 @@ seed_service() {
         port=${PIDA_PORT:-$port} bind=${PIDA_BIND:-$bind}
         workers=${PIDA_WORKERS:-$workers} threads=${PIDA_THREADS:-$threads}
     fi
+    # A fresh (empty) file starts with the quick-reference header; an
+    # existing user file is never rewritten, only appended to.
+    if [ ! -s "$1" ]; then
+        cat >> "$1" <<'HEADER'
+# Pi Action Pipeline -- per-install action config (personal data; never commit)
+#
+# Endpoint = group key (slashes OK) + action name:
+#   kitchen/fan: - action: on  =>  POST /api/kitchen/fan/on
+# run:     bash command, cwd = ~/.pida (relative paths OK)
+# env:     VAR -> value; inherited from groups, overridden per action
+# needs:   endpoint list fanned out in parallel, best effort
+# timeout: per-action seconds (default 60)
+# params:  typed contract (src/pida.schema.json); inputs: names accepted in
+#          the POST body as a partial delta (unset input = no change, provided
+#          inputs injected as INPUT_<NAME> env vars); outputs: names read back
+#          from $PIPELINE_OUTPUT key=value lines
+# service: server bind/port/workers/threads (systemctl restart pi-api)
+
+HEADER
+    fi
     {
         echo "service:"
         echo "  port: $port"
