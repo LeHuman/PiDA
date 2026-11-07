@@ -1,5 +1,5 @@
 <!-- PROJECT: PiDA -->
-<!-- TITLE: PiDA Server -->
+<!-- TITLE: PiDA -->
 <!-- KEYWORDS: Raspberry Pi, Home Automation, Server, API, Python, YAML -->
 <!-- LANGUAGES: Python, Bash, YAML -->
 <!-- TECHNOLOGY: Flask, Gunicorn, systemd -->
