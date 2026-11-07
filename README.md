@@ -112,6 +112,7 @@ Keep the server on a trusted private network or behind authentication. Do not ex
 
 ## Related
 
+- [PiDA App](https://github.com/LeHuman/PiDA-App) — the Android companion app for this server.
 - [Flask](https://flask.palletsprojects.com/)
 - [Gunicorn](https://docs.gunicorn.org/)
 - [JSON Schema](https://json-schema.org/)
