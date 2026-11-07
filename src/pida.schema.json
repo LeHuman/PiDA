@@ -201,6 +201,30 @@
             },
             "additionalProperties": false
         },
+        "service": {
+            "type": "object",
+            "description": "Bind/runtime settings consumed by scripts/serve.py.",
+            "properties": {
+                "port": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535
+                },
+                "bind": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "workers": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "threads": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            },
+            "additionalProperties": false
+        },
         "subgroupItem": {
             "type": "object",
             "minProperties": 1,
@@ -210,7 +234,8 @@
                 "not": {
                     "enum": [
                         "description",
-                        "env"
+                        "env",
+                        "service"
                     ]
                 }
             },
@@ -239,10 +264,13 @@
                 },
                 "env": {
                     "$ref": "#/$defs/envMap"
+                },
+                "service": {
+                    "$ref": "#/$defs/service"
                 }
             },
             "patternProperties": {
-                "^(?!description$|env$).+$": {
+                "^(?!description$|env$|service$).+$": {
                     "$ref": "#/$defs/node"
                 }
             },

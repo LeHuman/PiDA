@@ -591,7 +591,7 @@ def load() -> dict:
             env = dict(scope_env)
             env.update(_env_map(node.get("env")))
             for key, val in node.items():
-                if key in ("description", "env"):
+                if key in ("description", "env", "service"):
                     continue
                 bits = str(key).split("/")
                 for i in range(1, len(bits) + 1):
@@ -623,6 +623,50 @@ def load() -> dict:
     walk([], tree, {})
     ensure_library_executables()
     return {"actions": actions, "groups": groups, "group_prefixes": prefixes}
+
+
+# Service bind/runtime settings: the pida.yaml `service:` section, which
+# replaced the old env file. scripts/serve.py resolves these before the
+# server imports anything; the walk above never treats `service` as a group.
+SERVICE_DEFAULTS = {"port": 9999, "bind": "0.0.0.0", "workers": 1, "threads": 5}
+
+
+def service_settings() -> dict:
+    """Resolve bind/runtime settings from the pida.yaml `service` section.
+
+    A missing file, missing section, or missing keys fall back to
+    SERVICE_DEFAULTS; malformed values raise PipelineError so a bad
+    config stops the launch instead of silently binding a wrong port.
+    """
+    settings = dict(SERVICE_DEFAULTS)
+    if not COMMANDS.is_file():
+        return settings
+    try:
+        with open(COMMANDS, "r") as f:
+            tree = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise PipelineError(f"yaml parse error: {e}")
+    if tree is None:
+        return settings
+    if not isinstance(tree, dict):
+        raise PipelineError(f"{COMMANDS}: expected a mapping")
+    svc = tree.get("service")
+    if svc is None:
+        return settings
+    if not isinstance(svc, dict):
+        raise PipelineError(f"{COMMANDS}: 'service' must be a mapping")
+    for key, value in svc.items():
+        if key not in settings:
+            raise PipelineError(f"service: unknown key {key!r}")
+        if key == "bind":
+            if not isinstance(value, str) or not value:
+                raise PipelineError("service.bind: expected a host string")
+        elif not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise PipelineError(f"service.{key}: expected a positive integer")
+        settings[key] = value
+    if settings["port"] > 65535:
+        raise PipelineError("service.port: above 65535")
+    return settings
 
 
 def execute(run: str, timeout: int = EXEC_TIMEOUT, env: dict | None = None) -> subprocess.CompletedProcess:
