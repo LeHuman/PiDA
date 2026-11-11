@@ -39,7 +39,8 @@ jobs:
       - name: Build deb
         env:
           # The runner is x86_64, the package installs on arm64 hosts
-          # (Raspberry Pi OS bookworm: glibc 2.36, Python 3.11).
+          # (Raspberry Pi OS: glibc 2.36). Wheel targets cover the Python
+          # of every OS release in the field: bookworm 3.11, trixie 3.13.
           PIDA_WHEEL_PLATFORMS: >-
             manylinux2014_aarch64
             manylinux_2_17_aarch64
@@ -47,6 +48,7 @@ jobs:
             manylinux_2_31_aarch64
             manylinux_2_34_aarch64
             manylinux_2_36_aarch64
+          PIDA_WHEEL_TARGETS: '3.11:cp311 3.12:cp312 3.13:cp313 3.14:cp314'
         run: ./package/build-deb.sh "${{ steps.version.outputs.version }}"
 
       - name: Upload deb

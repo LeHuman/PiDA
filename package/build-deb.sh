@@ -36,13 +36,21 @@ if [ -n "${PIDA_WHEEL_PLATFORMS:-}" ]; then
     python3 -m pip wheel . --no-deps --wheel-dir "$STAGE/opt/pida/wheels" -q
     platforms=""
     for p in $PIDA_WHEEL_PLATFORMS; do platforms="$platforms --platform $p"; done
+    # Vendor for every target Python in the field (bookworm 3.11,
+    # trixie 3.13): the universal wheels land once, the ABI-specific
+    # binaries (PyYAML, markupsafe, rpds-py) once per Python; the target's
+    # pip picks its matching set from --no-index --find-links.
     # shellcheck disable=SC2086
-    python3 -m pip download . --dest "$STAGE/opt/pida/wheels" \
-        $platforms \
-        --python-version "${PIDA_WHEEL_PY:-3.11}" \
-        --implementation cp \
-        --abi "${PIDA_WHEEL_ABI:-cp311}" \
-        --only-binary=:all: --no-cache-dir -q
+    for target in ${PIDA_WHEEL_TARGETS:-3.11:cp311}; do
+        py="${target%%:*}"
+        abi="${target##*:}"
+        python3 -m pip download . --dest "$STAGE/opt/pida/wheels" \
+            $platforms \
+            --python-version "$py" \
+            --implementation cp \
+            --abi "$abi" \
+            --only-binary=:all: --no-cache-dir -q
+    done
 else
     python3 -m pip wheel . --wheel-dir "$STAGE/opt/pida/wheels" \
         --only-binary=:all: -q
