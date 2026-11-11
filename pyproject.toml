@@ -7,7 +7,7 @@ name = "pi-action-api"
 version = "1.0.0"
 description = "YAML-configured action API for local device automation"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
 	"Flask==3.1.3",
 	"gunicorn==26.2.0",

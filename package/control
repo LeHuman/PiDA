@@ -3,7 +3,7 @@ Version: 1.0.0
 Section: net
 Priority: optional
 Architecture: all
-Depends: python3 (>= 3.9), python3-venv, curl
+Depends: python3 (>= 3.11), python3-venv, curl
 Suggests: systemd-sysv
 Maintainer: PiDA <local@invalid>
 Description: Pi Action API — schema-driven device dispatch server

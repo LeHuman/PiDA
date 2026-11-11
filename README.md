@@ -39,7 +39,7 @@ I wanted a simple and lightweight solution to various 'automation' actions aroun
 ### Requirements
 
 - A Raspberry Pi or other Linux host.
-- Python 3.9 or newer, with `venv`.
+- Python 3.11 or newer, with `venv`.
 - `systemd` for the managed service.
 
 ### Building
