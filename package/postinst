@@ -122,13 +122,19 @@ if [ ! -x "$VENV/bin/gunicorn" ] || [ ! -f "$HASH_FILE" ] || [ "$(cat "$HASH_FIL
     if "$VENV/bin/pip" install --no-index --find-links /opt/pida/wheels \
             pi-action-api -r "$DATA/requirements.txt"; then
         echo "$DIGEST" > "$HASH_FILE"
-    else
+    elif "$VENV/bin/pip" install --no-index --find-links /opt/pida/wheels pi-action-api; then
         # Personal extras not in wheels: bootstrap the BASE offline now;
         # write the base-only hash so sync_deps retries BOTH at next boot
         # (online) instead of believing the extras are installed.
         echo "pida: personal extras not vendored; base-only offline; extras install at next service start"
-        "$VENV/bin/pip" install --no-index --find-links /opt/pida/wheels pi-action-api
         sha256sum "$PROJECT/pyproject.toml" | cut -d" " -f1 > "$HASH_FILE"
+    else
+        # No vendored set matches this host Python (e.g. an OS release
+        # newer than the wheels cover). Never fail the package over it:
+        # leave the hash absent so serve.py retries a full ONLINE install
+        # at the first service start (vendored universal wheel + PyPI).
+        echo "pida: WARNING - no vendored wheels match this python; online install at first service start" >&2
+        rm -f "$HASH_FILE"
     fi
 fi
 
